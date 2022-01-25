@@ -79,11 +79,11 @@ class AylaAPI:
         self.ip = ip
         self.port = port
         self.server = None
-        threading.Thread(target=self.start, args=[self.ip, self.port]).start()
+        threading.Thread(target=self.start).start()
 
     def start(self):
-        self.server = HTTPServer((self.host, self.port), AylaAPIHttpServer)
-        logging.info(f"Starting server on {self.host}:{self.port}")
+        self.server = HTTPServer((self.ip, self.port), AylaAPIHttpServer)
+        logging.info(f"Starting server on {self.ip}:{self.port}")
         self.server.serve_forever()
 
     def stop(self):

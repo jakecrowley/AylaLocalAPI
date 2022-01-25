@@ -1,29 +1,44 @@
 #!/usr/bin/env python3
 
-from AylaAPI import AylaAPIHttpServer
+from AylaAPI import AylaAPI
 import logging
 import requests
 import argparse
-import threading
 import time
+import socket
 
-httpd = None
-
-def start_server(ip, port):
-    global httpd
-
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0)
+    try:
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        logging.error("Failed to get local IP address, set it manually with --bind.")
+        IP = None
+    finally:
+        s.close()
+    return IP
 
 if __name__ == "__main__":
+    global api
     logging.basicConfig(level=logging.INFO)
+
+    IP = None
 
     parser = argparse.ArgumentParser()
     parser.add_argument("ip", help="IP address of the device", type=str)
-    parser.add_argument("--bind", dest='bind', help="IP to run the API server on", type=str, default='')
+    if IP is None:
+        parser.add_argument("--bind", dest='bind', help="IP to run the API server on", type=str, required=True)
+    else:
+        parser.add_argument("--bind", dest='bind', help="IP to run the API server on", type=str, default=IP)
     parser.add_argument("--port", dest='port', help="Port to run the API server on", type=int, default=10275, required=False)
     args = parser.parse_args()
 
+    api = AylaAPI(args.bind, args.port)
+
     while True:
-        if httpd is None:
+        if api.server is None:
             time.sleep(0.25)
             continue
 
