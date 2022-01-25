@@ -24,7 +24,7 @@ if __name__ == "__main__":
     global api
     logging.basicConfig(level=logging.INFO)
 
-    IP = None
+    IP = get_ip()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("ip", help="IP address of the device", type=str)
