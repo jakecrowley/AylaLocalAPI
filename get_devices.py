@@ -84,7 +84,7 @@ if __name__ == "__main__":
     devices = getDevices(access_token)
 
     f = open("devices.json", "w")
-    f.write(jsonpickle.encode(devices, indent=4))
+    f.write(jsonpickle.encode(devices, indent=4, unpicklable=False))
     f.close()
     
 

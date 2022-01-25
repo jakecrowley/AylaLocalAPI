@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
-from AylaAPI import AylaAPI
+from AylaAPI import AylaAPI, Device
 import logging
 import requests
 import argparse
 import time
 import socket
+import threading
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -20,8 +21,20 @@ def get_ip():
         s.close()
     return IP
 
+def send_ping_forever(api: AylaAPI, device: Device):
+    ip = device.lan_ip
+
+    while True:
+        try:
+            logging.info("Sending ping to {}\n".format(ip))
+            r = requests.put('http://' + ip + '/local_reg.json', json = {"local_reg":{"uri":"/local_lan","notify":0,"ip":api.ip,"port":api.port}})
+            if r.status_code != 202:
+                logging.info("Request failed with status code {}".format(r.status_code))
+        except Exception as e:
+            logging.info("Request failed with exception {}".format(str(e)))
+        time.sleep(10)
+
 if __name__ == "__main__":
-    global api
     logging.basicConfig(level=logging.INFO)
 
     IP = get_ip()
@@ -37,16 +50,10 @@ if __name__ == "__main__":
 
     api = AylaAPI(args.bind, args.port)
 
-    while True:
-        if api.server is None:
-            time.sleep(0.25)
-            continue
+    while api.server is None:
+        time.sleep(0.25)
 
-        try:
-            logging.info("Sending ping to {}\n".format(args.ip))
-            r = requests.put('http://' + args.ip + '/local_reg.json', json = {"local_reg":{"uri":"/local_lan","notify":0,"ip":args.bind,"port":args.port}})
-            if r.status_code != 202:
-                logging.info("Request failed with status code {}".format(r.status_code))
-        except Exception as e:
-            logging.info("Request failed with exception {}".format(str(e)))
-        time.sleep(10)
+    for device in api.devices:
+        threading.Thread(target=send_ping_forever, args=[api, device]).start()
+    
+    _ = input()
