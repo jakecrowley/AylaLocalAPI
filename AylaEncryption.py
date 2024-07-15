@@ -5,12 +5,12 @@ import random
 from Crypto.Cipher import AES
 
 class AylaEncryption:
-    def __init__(self, SRnd1, SRnd2, NTime1, NTime2):
+    def __init__(self, SRnd1, SRnd2, NTime1, NTime2, LanipKey):
         self.SRnd1 = SRnd1
         self.SRnd2 = SRnd2
         self.NTime1 = NTime1
         self.NTime2 = NTime2
-        self.LanipKey = "t2o+r4FgnE1o0J/HDQ5aZpVsEkqkyQ=="
+        self.LanipKey = LanipKey
         self.__init_aes_cipher()
 
     def encryptAndSign(self, data):

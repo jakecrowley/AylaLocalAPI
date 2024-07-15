@@ -17,9 +17,9 @@ class Device:
             self.Lanip = getLanip(access_token, key)
 
 
-def login(app_id, app_secret, username, password):
+def login(app_id, app_secret, email, password):
     url = "https://user-field.aylanetworks.com/users/sign_in.json"
-    data = {"user":{"email":args.email,"application":{"app_id":args.app_id,"app_secret":args.app_secret},"password":args.password}}
+    data = {"user":{"email":email,"application":{"app_id":app_id,"app_secret":app_secret},"password":password}}
     response = requests.request("POST", url, json=data)
     respjson = response.json()
 
@@ -74,18 +74,16 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("app_id", help="App ID for the Ayla API", type=str)
-    parser.add_argument("app_secret", help="App Secret for the Ayla API", type=str)
     parser.add_argument("email", help="Email for the Ayla API", type=str)
     parser.add_argument("password", help="Password for the Ayla API", type=str)
     args = parser.parse_args()
 
-    access_token = login(args.app_id, args.app_secret, args.email, args.password)
+    access_token = login("schneider-5w-id", "schneider-4p5If6sO_QS9F0mQLJmOoCxswng", args.email, args.password)
     devices = getDevices(access_token)
 
-    f = open("devices.json", "w")
-    f.write(jsonpickle.encode(devices, indent=4, unpicklable=False))
-    f.close()
+    with open("devices.json", "w") as f:
+        f.write(jsonpickle.encode(devices, indent=4, unpicklable=False))
+        logging.info(f"Retrieved {len(devices)} devices.")
     
 
 

@@ -62,7 +62,9 @@ class AylaAPIHttpServer(BaseHTTPRequestHandler):
                 body_json["key_exchange"]["random_1"], 
                 AylaEncryption.random_token(16), 
                 body_json["key_exchange"]["time_1"], 
-                int(time.time() * 1000000))
+                int(time.time() * 1000000),
+                device.Lanip["lanip"]["lanip_key"]
+                )
 
             device.crypt_config = config
 
@@ -97,28 +99,28 @@ class AylaAPIHttpServer(BaseHTTPRequestHandler):
             logging.info(f"POST request\nHost: {host_ip}\nPath: {self.path}\nBody: {post_data.decode('utf-8')}\nDecrypted Body: {dec.decode('utf-8')}\n")
         
         # temporary endpoint to set setting values on the device
-        elif(self.path == "/set_device_property"):
-            content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-            post_data = self.rfile.read(content_length) # <--- Gets the data itself
-            body_json = json.loads(post_data.decode('utf-8'))
-            logging.info(f"POST request\nPath: {self.path}\nBody: {post_data.decode('utf-8')}\n")
+        # elif(self.path == "/set_device_property"):
+        #     content_length = int(self.headers['Content-Length'])
+        #     post_data = self.rfile.read(content_length)
+        #     body_json = json.loads(post_data.decode('utf-8'))
+        #     logging.info(f"POST request\nPath: {self.path}\nBody: {post_data.decode('utf-8')}\n")
 
-            device = api.get_device_by_ip(body_json["device_ip"])
+        #     device = api.get_device_by_ip(body_json["device_ip"])
 
-            if device == None:
-                logging.error("Device with IP " + body_json["device_ip"] + " not found")
-                self.send_response(500)
-                self.end_headers()
-                return
+        #     if device == None:
+        #         logging.error("Device with IP " + body_json["device_ip"] + " not found")
+        #         self.send_response(500)
+        #         self.end_headers()
+        #         return
 
-            device.set_property(body_json["property_name"], body_json["value"])
-            device.notify()
+        #     device.set_property(body_json["property_name"], body_json["value"])
+        #     device.notify()
 
-            self._set_response()
-            self.wfile.write('{"success": true}'.encode('utf-8'))
-        else:
-            self.send_response(400)
-            self.end_headers()
+        #     self._set_response()
+        #     self.wfile.write('{"success": true}'.encode('utf-8'))
+        # else:
+        #     self.send_response(400)
+        #     self.end_headers()
 
 class DeviceProperty:
     def __init__(self, property):
@@ -147,10 +149,10 @@ class Device:
         for prop in properties:
             self.properties.append(DeviceProperty(prop["property"]))
 
-    def notify(self):
+    def ping(self, notify=0):
         try:
             logging.info("Sending notify to {}\n".format(api.devices[0].lan_ip))
-            r = requests.put('http://' + api.devices[0].lan_ip + '/local_reg.json', json = {"local_reg":{"uri":"/local_lan","notify":1,"ip":api.ip,"port":api.port}})
+            r = requests.post('http://' + api.devices[0].lan_ip + '/local_reg.json', json = {"local_reg":{"uri":"/local_lan","notify":notify,"ip":api.ip,"port":api.port}})
             if r.status_code != 202:
                 logging.info("Request failed with status code {}".format(r.status_code))
         except Exception as e:
@@ -175,8 +177,12 @@ class Device:
         if "properties" not in self.data_pending:
             self.data_pending["properties"] = []
         self.data_pending["properties"].append(prop.toJSON())
+        self.ping(notify=1)
 
 class AylaAPI:
+    server: HTTPServer
+    devices: list[Device]
+
     def __init__(self, ip, port):
         global api
 
@@ -185,9 +191,8 @@ class AylaAPI:
         self.server = None
         self.devices = []
 
-        file = open("./devices.json", "r")
-        devices_list = json.loads(file.read())
-        file.close()
+        with open("./devices.json", "r") as file:
+            devices_list = json.loads(file.read())
 
         for device in devices_list:
             self.devices.append(Device(**device))

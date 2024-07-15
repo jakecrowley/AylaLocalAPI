@@ -25,14 +25,9 @@ def send_ping_forever(api: AylaAPI, device: Device):
     ip = device.lan_ip
 
     while True:
-        try:
-            logging.info("Sending ping to {}\n".format(ip))
-            r = requests.put('http://' + ip + '/local_reg.json', json = {"local_reg":{"uri":"/local_lan","notify":0,"ip":api.ip,"port":api.port}})
-            if r.status_code != 202:
-                logging.info("Request failed with status code {}".format(r.status_code))
-        except Exception as e:
-            logging.info("Request failed with exception {}".format(str(e)))
-        time.sleep(10)
+        logging.info("Sending ping to {}\n".format(ip))
+        api.devices[0].ping()
+        time.sleep(30)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
@@ -56,4 +51,9 @@ if __name__ == "__main__":
     for device in api.devices:
         threading.Thread(target=send_ping_forever, args=[api, device]).start()
     
-    _ = input()
+    while True:
+        try:
+            cmd = input().split('=')
+            api.devices[0].set_property(cmd[0], int(cmd[1]))
+        except:
+            pass
