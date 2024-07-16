@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import jsonpickle
 from AylaAPI import AylaAPI, Device
 import logging
 import requests
@@ -32,14 +33,39 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     IP = get_ip()
+    
+    try:    
+        with open("config.json", "r") as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        print("Config file not found! Run login.py first.")
 
     parser = argparse.ArgumentParser()
+    
     if IP is None:
         parser.add_argument("--bind", dest='bind', help="IP to run the API server on", type=str, required=True)
     else:
         parser.add_argument("--bind", dest='bind', help="IP to run the API server on", type=str, default=IP)
+        
     parser.add_argument("--port", dest='port', help="Port to run the API server on", type=int, default=10275, required=False)
+    
+    mqtt_required = True if "mqtt" not in config else False
+    parser.add_argument("--mqtt-ip", dest='mqtt_ip', help="IP of the MQTT server to connect to.", type=str, default=config.get('mqtt', {}).get('ip'), required=mqtt_required)
+    parser.add_argument("--mqtt-port", dest='mqtt_port', help="Port of the MQTT server to connect to.", type=int, default=config.get('mqtt', {}).get('port', 1883), required=False)
+    parser.add_argument("--mqtt-user", dest='mqtt_user', help="Username for MQTT server authentication.", type=str, default=config.get('mqtt', {}).get('user'), required=mqtt_required)
+    parser.add_argument("--mqtt-pass", dest='mqtt_pass', help="Password for MQTT server authentication.", type=str, default=config.get('mqtt', {}).get('pass'), required=mqtt_required)
+        
     args = parser.parse_args()
+    
+    if mqtt_required:
+        config["mqtt"] = {
+            'ip': args.mqtt_ip,
+            'port': args.mqtt_port,
+            'user': args.mqtt_user,
+            'pass': args.mqtt_pass,
+        }
+        with open("config.json", "w") as f:
+            f.write(jsonpickle.encode(config, indent=4, unpicklable=False))
 
     api = AylaAPI(args.bind, args.port)
 
@@ -90,14 +116,10 @@ if __name__ == "__main__":
     mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     mqttc.on_connect = mqtt_on_connect
     mqttc.on_message = mqtt_on_message
-    mqttc.username_pw_set("mqtt", "2fUM2rQP3f4NT17iZq696bRz")
+    if args.mqtt_user and args.mqtt_pass:
+        mqttc.username_pw_set(args.mqtt_user, args.mqtt_pass)
 
-    mqttc.connect('192.168.0.157')
+    mqttc.connect(args.mqtt_ip)
 
     mqttc.loop_forever()
-    # while True:
-    #     try:
-    #         cmd = input().split('=')
-    #         api.devices[0].set_property(cmd[0], int(cmd[1]))
-    #     except:
-    #         pass
+    
