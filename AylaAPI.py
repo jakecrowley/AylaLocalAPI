@@ -78,8 +78,8 @@ class AylaAPIHttpServer(BaseHTTPRequestHandler):
 
         elif(self.path.startswith("/local_lan/property/datapoint.json")):
             host_ip = self.client_address[0]
-            content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-            post_data = self.rfile.read(content_length) # <--- Gets the data itself
+            content_length = int(self.headers['Content-Length']) 
+            post_data = self.rfile.read(content_length) 
             body_json = json.loads(post_data.decode('utf-8'))
 
             device = api.get_device_by_ip(host_ip)
@@ -151,7 +151,7 @@ class Device:
 
     def ping(self, notify=0):
         try:
-            logging.info("Sending notify to {}\n".format(api.devices[0].lan_ip))
+            logging.info("Sending {} to {}\n".format("notify" if notify == 1 else "ping", api.devices[0].lan_ip))
             r = requests.post('http://' + api.devices[0].lan_ip + '/local_reg.json', json = {"local_reg":{"uri":"/local_lan","notify":notify,"ip":api.ip,"port":api.port}})
             if r.status_code != 202:
                 logging.info("Request failed with status code {}".format(r.status_code))
@@ -191,8 +191,8 @@ class AylaAPI:
         self.server = None
         self.devices = []
 
-        with open("./devices.json", "r") as file:
-            devices_list = json.loads(file.read())
+        with open("./config.json", "r") as file:
+            devices_list = json.loads(file.read())["devices"]
 
         for device in devices_list:
             self.devices.append(Device(**device))
@@ -201,6 +201,12 @@ class AylaAPI:
 
         threading.Thread(target=self.start).start()
     
+    def get_device_by_sn(self, dsn) -> Device:
+        for device in self.devices:
+            if(device.dsn == dsn):
+                return device
+        return None
+
     def get_device_by_ip(self, ip) -> Device:
         for device in self.devices:
             if(device.lan_ip == ip):
