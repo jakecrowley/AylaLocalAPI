@@ -32,6 +32,8 @@ def send_ping_forever(api: AylaAPI, device: Device):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
+    mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+
     IP = get_ip()
     
     try:    
@@ -112,8 +114,14 @@ if __name__ == "__main__":
         device.set_property(dev_info[1], 1 if msg.payload == b'on' else 0)
         client.publish(f"homeassistant/switch/{dev_info[0]}-{dev_info[1]}/status", msg.payload.decode(), retain=True)
         logging.info("MQTT: " + msg.topic + " - " + str(msg.payload))
+        
+    def on_device_update(device: Device, update: dict):
+        name = update["data"]["name"]
+        value = update["data"]["value"]
+        mqttc.publish(f"homeassistant/switch/{device.dsn}-{name}/status", payload='on' if value == 1 else 'off', retain=True)
 
-    mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    api.on_device_update = on_device_update
+
     mqttc.on_connect = mqtt_on_connect
     mqttc.on_message = mqtt_on_message
     if args.mqtt_user and args.mqtt_pass:

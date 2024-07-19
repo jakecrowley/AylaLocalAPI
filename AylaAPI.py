@@ -1,6 +1,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from AylaEncryption import AylaEncryption
 from base64 import b64encode, b64decode
+from typing import Callable
 import logging
 import json
 import time
@@ -74,7 +75,7 @@ class AylaAPIHttpServer(BaseHTTPRequestHandler):
             self.wfile.write(resp.encode('utf-8'))
 
             logging.info(f"POST request\nHost: {device.lan_ip}\nPath: {self.path}\nBody: {post_data.decode('utf-8')}\nResponse: {resp}\n")
-            logging.info(f"Encryption Paramters\nAppSignKey: {config.app_sign_key().hex()}\nAppCryptoKey: {config.app_crypto_key().hex()}\nAppIvSeed: {config.app_iv_seed().hex()}\nDevSignKey: {config.dev_sign_key().hex()}\n")
+            logging.debug(f"Encryption Paramters\nAppSignKey: {config.app_sign_key().hex()}\nAppCryptoKey: {config.app_crypto_key().hex()}\nAppIvSeed: {config.app_iv_seed().hex()}\nDevSignKey: {config.dev_sign_key().hex()}\n")
 
         elif(self.path.startswith("/local_lan/property/datapoint.json")):
             host_ip = self.client_address[0]
@@ -97,6 +98,9 @@ class AylaAPIHttpServer(BaseHTTPRequestHandler):
             self._set_response()
             self.wfile.write(post_data)
             logging.info(f"POST request\nHost: {host_ip}\nPath: {self.path}\nBody: {post_data.decode('utf-8')}\nDecrypted Body: {dec.decode('utf-8')}\n")
+            
+            if api.on_device_update:
+                api.on_device_update(device, json.loads(dec.decode('utf-8')))
         
         # temporary endpoint to set setting values on the device
         # elif(self.path == "/set_device_property"):
@@ -182,6 +186,7 @@ class Device:
 class AylaAPI:
     server: HTTPServer
     devices: list[Device]
+    on_device_update: Callable = None
 
     def __init__(self, ip, port):
         global api
