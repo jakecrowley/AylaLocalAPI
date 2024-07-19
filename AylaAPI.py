@@ -157,6 +157,7 @@ class Device:
         try:
             logging.info("Sending {} to {}\n".format("notify" if notify == 1 else "ping", api.devices[0].lan_ip))
             r = requests.post('http://' + api.devices[0].lan_ip + '/local_reg.json', json = {"local_reg":{"uri":"/local_lan","notify":notify,"ip":api.ip,"port":api.port}})
+            logging.info(f"{r.request.body}")
             if r.status_code != 202:
                 logging.info("Request failed with status code {}".format(r.status_code))
         except Exception as e:
@@ -225,8 +226,11 @@ class AylaAPI:
         return None
 
     def start(self):
-        self.server = HTTPServer((self.ip, self.port), AylaAPIHttpServer)
-        logging.info(f"Starting server on {self.ip}:{self.port}")
+        try:
+            self.server = HTTPServer((self.ip, self.port), AylaAPIHttpServer)
+        except:
+            self.server = HTTPServer(('0.0.0.0', self.port), AylaAPIHttpServer)
+        logging.info(f"Starting server on {self.server.server_address}")
         self.server.serve_forever()
 
     def stop(self):

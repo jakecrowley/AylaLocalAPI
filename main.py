@@ -40,7 +40,7 @@ if __name__ == "__main__":
         with open("config.json", "r") as f:
             config = json.load(f)
     except FileNotFoundError:
-        print("Config file not found! Run login.py first.")
+        raise Exception("Config file not found! Run login.py first.")
 
     parser = argparse.ArgumentParser()
     
